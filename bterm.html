@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Propose New Business Term</title>
+  <style>
+    :root {
+      --primary-color: #0052CC;
+      --primary-hover: #0046B3;
+      --bg-color: #F4F5F7;
+      --card-bg: #FFFFFF;
+      --text-color: #333333;
+      --border-color: #DFE1E6;
+      --success-color: #36B37E;
+      --error-color: #FF5630;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .form-container {
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 450px;
+      border: 1px solid var(--border-color);
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      color: #172B4D;
+      font-size: 22px;
+    }
+
+    p.description {
+      color: #5E6C84;
+      font-size: 14px;
+      margin-bottom: 24px;
+      line-height: 1.4;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #172B4D;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      box-sizing: border-box;
+      border: 2px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 14px;
+      transition: border-color 0.2s ease-in-out;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--primary-color);
+    }
+
+    button {
+      width: 100%;
+      background-color: var(--primary-color);
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    button:disabled {
+      background-color: #A5C2F1;
+      cursor: not-allowed;
+    }
+
+    .status-message {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      display: none;
+      line-height: 1.4;
+    }
+
+    .status-message.success {
+      display: block;
+      background-color: #E3FCEF;
+      color: #006644;
+      border: 1px solid #ABF5D1;
+    }
+
+    .status-message.error {
+      display: block;
+      background-color: #FFEBE6;
+      color: #BF2600;
+      border: 1px solid #FFBDAD;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="form-container">
+    <h2>Propose New Business Term</h2>
+    <p class="description">Enter the name of the new business term below to submit it for review by the Data Governance Council.</p>
+    
+    <form id="proposeTermForm">
+      <div class="form-group">
+        <label for="businessTermName">Business Term Name</label>
+        <input type="text" id="businessTermName" placeholder="e.g., Customer Lifetime Value" required>
+      </div>
+      
+      <button type="submit" id="submitBtn">Propose Term</button>
+    </form>
+
+    <div id="statusBox" class="status-message"></div>
+  </div>
+
+  <script>
+    (function () {
+      // Must exactly match the name attribute inside propose.xml <process name="...">
+      const WORKFLOW_NAME = "Propose New Business Term";
+
+      // Form properties and default UUID values extracted from propose.xml
+      const FORM_PROPERTIES = {
+        intakeVocabulary: "00000000-0000-0000-0000-000000006013",
+        conceptType: "00000000-0000-0000-0000-000000011001", // Default Business Term asset type UUID
+        usesRelationTypeUuid: "00000000-0000-0000-0000-000000007004",
+        definitionAttributeTypeUuid: "00000000-0000-0000-0000-000000000202",
+        noteAttributeTypeUuid: "00000000-0000-0000-0000-000000003116"
+      };
+
+      let cachedCsrfToken = null;
+      let cachedWorkflowDefinitionId = null;
+
+      // Elements
+      const form = document.getElementById("proposeTermForm");
+      const termInput = document.getElementById("businessTermName");
+      const submitBtn = document.getElementById("submitBtn");
+      const statusBox = document.getElementById("statusBox");
+
+      async function getCsrfToken() {
+        if (cachedCsrfToken) return cachedCsrfToken;
+        const resp = await fetch(
+          `${window.location.origin}/rest/2.0/auth/sessions/current?include=csrfToken`,
+          { credentials: "include" }
+        );
+        if (!resp.ok) throw new Error(`Failed to fetch CSRF token: ${resp.status}`);
+        const data = await resp.json();
+        cachedCsrfToken = data.csrfToken;
+        return cachedCsrfToken;
+      }
+
+      async function getWorkflowDefinitionId(csrfToken) {
+        if (cachedWorkflowDefinitionId) return cachedWorkflowDefinitionId;
+        const url = `${window.location.origin}/rest/2.0/workflowDefinitions?offset=0&limit=1&countLimit=-1`
+          + `&name=${encodeURIComponent(WORKFLOW_NAME)}&sortOrder=ASC&sortField=NAME`;
+        
+        const resp = await fetch(url, {
+          headers: {
+            "Accept": "application/json",
+            "X-CSRF-TOKEN": csrfToken
+          },
+          credentials: "include"
+        });
+        if (!resp.ok) throw new Error(`Failed to fetch workflow definition: ${resp.status}`);
+        const data = await resp.json();
+        if (!data.results || data.results.length === 0) {
+          throw new Error(`No workflow definition found with name: "${WORKFLOW_NAME}"`);
+        }
+        cachedWorkflowDefinitionId = data.results[0].id;
+        return cachedWorkflowDefinitionId;
+      }
+
+      async function submitProposeWorkflow(termName) {
+        try {
+          const csrfToken = await getCsrfToken();
+          const workflowDefinitionId = await getWorkflowDefinitionId(csrfToken);
+          const workflowUrl = `${window.location.origin}/rest/2.0/workflowInstances`;
+
+          // Prepare payload containing the dynamic user input alongside the required static defaults
+          const payload = {
+            workflowDefinitionId: workflowDefinitionId,
+            businessItemType: "GLOBAL",
+            formProperties: {
+              signifier: termName,
+              intakeVocabulary: FORM_PROPERTIES.intakeVocabulary,
+              conceptType: FORM_PROPERTIES.conceptType,
+              usesRelationTypeUuid: FORM_PROPERTIES.usesRelationTypeUuid,
+              definitionAttributeTypeUuid: FORM_PROPERTIES.definitionAttributeTypeUuid,
+              noteAttributeTypeUuid: FORM_PROPERTIES.noteAttributeTypeUuid
+            }
+          };
+
+          const resp = await fetch(workflowUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "X-CSRF-TOKEN": csrfToken
+            },
+            credentials: "include",
+            body: JSON.stringify(payload)
+          });
+
+          if (!resp.ok) {
+            const errorText = await resp.text();
+            throw new Error(errorText || `Status code ${resp.status}`);
+          }
+
+          showStatus("Success! Your proposed business term has been submitted successfully.", "success");
+          form.reset();
+
+        } catch (error) {
+          console.error("⚠️ Error calling workflow API:", error);
+          showStatus(`Submission Failed: ${error.message}`, "error");
+        } finally {
+          setLoadingState(false);
+        }
+      }
+
+      function showStatus(message, type) {
+        statusBox.textContent = message;
+        statusBox.className = `status-message ${type}`;
+      }
+
+      function setLoadingState(isLoading) {
+        if (isLoading) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span class="spinner"></span>Submitting...';
+          statusBox.className = "status-message"; // Clear status
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Propose Term';
+        }
+      }
+
+      // Handle form submission
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const termValue = termInput.value.trim();
+        
+        if (!termValue) return;
+
+        setLoadingState(true);
+        submitProposeWorkflow(termValue);
+      });
+
+    })();
+  </script>
+</body>
+</html>
