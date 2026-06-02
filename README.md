@@ -26,25 +26,9 @@ This tool provides a streamlined, user-friendly interface for any business user 
 
 ## 📋 Prerequisites & Setup
 
-### 1. Collibra Workflow Deployment
+### Collibra Workflow Deployment
 
 Ensure that the accompanying `propose.bpmn` BPMN process is fully deployed and activated inside your Collibra environment:
 
 * **Process Name:** Must be exactly `Propose New Business Term` (or updated inside the JavaScript configuration constants).
 * **Target Domain:** By default, the workflow targets a specific intake vocabulary (`00000000-0000-0000-0000-000000006013`). Ensure this domain exists or update the UUID to point to your designated target community/domain.
-
-### 2. Form Configuration
-
-Open the HTML file and review the configuration block inside the `<script>` tag to align with your instance's metadata model configuration:
-
-```javascript
-// Form properties and default UUID values extracted from your operating model
-const FORM_PROPERTIES = {
-  intakeVocabulary: "00000000-0000-0000-0000-000000006013", // Target Domain UUID
-  conceptType: "00000000-0000-0000-0000-000000011001",      // Asset Type UUID (Business Term)
-  usesRelationTypeUuid: "00000000-0000-0000-0000-000000007004",
-  definitionAttributeTypeUuid: "00000000-0000-0000-0000-000000000202",
-  noteAttributeTypeUuid: "00000000-0000-0000-0000-000000003116"
-};
-
-```
