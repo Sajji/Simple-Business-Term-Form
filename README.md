@@ -28,7 +28,7 @@ This tool provides a streamlined, user-friendly interface for any business user 
 
 ### 1. Collibra Workflow Deployment
 
-Ensure that the accompanying `propose.xml` BPMN process is fully deployed and activated inside your Collibra environment:
+Ensure that the accompanying `propose.bpmn` BPMN process is fully deployed and activated inside your Collibra environment:
 
 * **Process Name:** Must be exactly `Propose New Business Term` (or updated inside the JavaScript configuration constants).
 * **Target Domain:** By default, the workflow targets a specific intake vocabulary (`00000000-0000-0000-0000-000000006013`). Ensure this domain exists or update the UUID to point to your designated target community/domain.
@@ -48,26 +48,3 @@ const FORM_PROPERTIES = {
 };
 
 ```
-
----
-
-## 📦 Deployment Instructions
-
-Because this form relies on cookie-based session passing, **it must be executed from the same origin/domain as your Collibra instance** to avoid Cross-Origin Resource Sharing (CORS) blocks.
-
-### Option A: Collibra Dashboard Widget (Recommended)
-
-1. Navigate to your target dashboard in Collibra.
-2. Add a new **Text/HTML Widget**.
-3. Switch the widget editor into **Source Code Mode (`<>`)**.
-4. Paste the complete contents of the HTML file directly into the source view and save.
-
-### Option B: Custom Cloud Hosting / Reverse Proxy
-
-If hosting outside of a direct dashboard widget, deploy the HTML file to an internal web server sitting behind the exact same enterprise reverse proxy or domain alias as your Collibra platform (e.g., `collibra.yourcompany.com/intake`).
-
----
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the issues page if you want to expand the form fields to capture descriptions (`definition`), notes (`note`), or relation targets.
